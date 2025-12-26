@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario Pro</title>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; }
+        .app { max-width: 800px; margin: 0 auto; background: white; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 20px; position: sticky; top: 0; z-index: 100; }
+        .header h1 { font-size: 24px; margin-bottom: 10px; }
+        .session-badge { background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 13px; display: inline-block; margin-top: 5px; }
+        .stats { display: flex; gap: 15px; justify-content: space-around; margin-top: 10px; }
+        .stat { text-align: center; }
+        .stat-number { font-size: 20px; font-weight: bold; }
+        .stat-label { font-size: 11px; opacity: 0.9; }
+        .content { padding: 20px; }
+        .btn { padding: 14px 20px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin: 5px; }
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-secondary { background: #6b7280; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-full { width: 100%; }
+        .btn-large { padding: 20px; font-size: 18px; margin: 10px 0; }
+        .btn-small { padding: 6px 12px; font-size: 13px; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: 14px; }
+        .form-input, .form-textarea { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; }
+        .form-textarea { min-height: 80px; resize: vertical; }
+        .keyboard-toggle { display: flex; gap: 5px; margin-top: 10px; }
+        .keyboard-btn { flex: 1; padding: 8px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .keyboard-btn.active { border-color: #6366f1; background: #eef2ff; color: #6366f1; }
+        .item { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+        .item-session { display: inline-block; background: #dbeafe; color: #1e40af; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+        .item-code { font-size: 13px; color: #6366f1; font-weight: 600; font-family: monospace; }
+        .item-name { font-weight: 600; color: #1f2937; margin: 5px 0; }
+        .item-meta { font-size: 14px; color: #6b7280; margin: 5px 0; }
+        .hidden { display: none; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; }
+        .alert-success { background: #d1fae5; color: #065f46; }
+        .alert-warning { background: #fef3c7; color: #92400e; }
+        .alert-info { background: #dbeafe; color: #1e40af; }
+        input[type="file"] { display: none; }
+        .photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-top: 10px; }
+        .search-input { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; margin-bottom: 20px; }
+        .session-list { list-style: none; }
+        .session-item { background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 10px; margin-bottom: 10px; }
+        .session-item-name { font-weight: 600; font-size: 16px; color: #1f2937; }
+        .session-item-info { font-size: 13px; color: #6b7280; margin-top: 5px; }
+        .suggestions-dropdown { position: absolute; background: white; border: 2px solid #6366f1; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 10; width: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 5px; }
+        .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #f3f4f6; }
+        .suggestion-item:hover { background: #f9fafb; }
+        .suggestion-badge { display: inline-block; background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-left: 8px; }
+        .product-card { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .product-photo { width: 100%; max-height: 400px; object-fit: contain; border-radius: 8px; margin-bottom: 20px; }
+        .product-title { font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 10px; }
+        .product-detail { margin: 10px 0; font-size: 15px; color: #4b5563; }
+        .product-detail strong { color: #1f2937; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Vista Sessioni -->
+        <div id="sessions-view">
+            <div class="header">
+                <h1>📦 Inventario Pro</h1>
+                <div style="margin-top: 10px; font-size: 14px;">Sistema a Sessioni</div>
+            </div>
+            <div class="content">
+                <button class="btn btn-primary btn-large btn-full" onclick="showNewSessionForm()">🆕 Nuova Sessione</button>
+                <button class="btn btn-secondary btn-large btn-full" onclick="showSessionsList()">🔄 Riprendi Sessione</button>
+            </div>
+        </div>
+
+        <!-- Form Nuova Sessione -->
+        <div id="new-session-view" class="hidden">
+            <div class="header">
+                <h1>🆕 Nuova Sessione</h1>
+            </div>
+            <div class="content">
+                <button class="btn btn-secondary" onclick="showSessionsView()">← Indietro</button>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label class="form-label">Nome Sessione *</label>
+                    <input type="text" class="form-input" id="new-session-name" placeholder="Es: Scaffale 1, Magazzino A..." style="font-size: 18px;">
+                </div>
+                <button class="btn btn-success btn-full" onclick="createSession()">✓ Crea Sessione</button>
+            </div>
+        </div>
+
+        <!-- Lista Sessioni -->
+        <div id="sessions-list-view" class="hidden">
+            <div class="header">
+                <h1>🔄 Sessioni Esistenti</h1>
+            </div>
+            <div class="content">
+                <div id="alert-container-sessions"></div>
+                <button class="btn btn-secondary" onclick="showSessionsView()">← Indietro</button>
+                <ul id="sessions-list" class="session-list" style="margin-top: 20px;"></ul>
+            </div>
+        </div>
+
+        <!-- Vista Inventario -->
+        <div id="inventory-view" class="hidden">
+            <div class="header">
+                <h1>📦 Inventario Pro</h1>
+                <div class="session-badge" id="current-session-badge"></div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-number" id="stat-items">0</div>
+                        <div class="stat-label">Articoli</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="stat-units">0</div>
+                        <div class="stat-label">Unità</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="stat-value">€0</div>
+                        <div class="stat-label">Valore</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div id="alert-container"></div>
+
+                <!-- Lista Prodotti -->
+                <div id="list-view">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+                        <button class="btn btn-primary" onclick="showAddForm()">➕ Nuovo Articolo</button>
+                        <button class="btn btn-secondary" onclick="manualSave()">💾 Salva Manuale</button>
+                        <button class="btn btn-warning" onclick="exportExcel()">📊 Esporta Excel</button>
+                        <button class="btn btn-danger" onclick="closeSession()">← Chiudi Sessione</button>
+                    </div>
+                    
+                    <input type="text" class="search-input" id="search-input" placeholder="🔍 Cerca..." oninput="filterItems()">
+                    
+                    <div id="items-container"></div>
+                </div>
+
+                <!-- Form Prodotto -->
+                <div id="form-view" class="hidden">
+                    <button class="btn btn-secondary" onclick="showList()">← Torna alla lista</button>
+                    
+                    <div id="cross-session-warning" class="hidden" style="margin-top: 20px;"></div>
+                    
+                    <div style="margin-top: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">1. Codice Articolo *</label>
+                            <div style="position: relative;">
+                                <input type="text" class="form-input" id="codiceArticolo" style="font-size: 18px; font-family: monospace;" oninput="checkAutoComplete('codice'); checkCrossSessionDuplicate('codice', this.value);">
+                                <div id="codice-suggestions" class="suggestions-dropdown hidden"></div>
+                            </div>
+                            <div class="keyboard-toggle">
+                                <button class="keyboard-btn active" onclick="toggleKeyboard('codice', 'numeric')">🔢 Numerica</button>
+                                <button class="keyboard-btn" onclick="toggleKeyboard('codice', 'text')">🔤 Completa</button>
+                            </div>
+                            <button class="btn btn-secondary btn-full" style="margin-top: 10px;" onclick="document.getElementById('codice-file').click()">📷 Scanner</button>
+                            <input type="file" id="codice-file" accept="image/*" capture="environment" onchange="scanCodice(event)">
+                        </div>
+
+                        <div id="form-fields" class="hidden">
+                            <div class="form-group">
+                                <label class="form-label">2. Bar Code *</label>
+                                <div style="position: relative;">
+                                    <input type="text" class="form-input" id="barcode" style="font-size: 18px; font-family: monospace;" oninput="checkAutoComplete('barcode'); checkCrossSessionDuplicate('barcode', this.value);">
+                                    <div id="barcode-suggestions" class="suggestions-dropdown hidden"></div>
+                                </div>
+                                <div class="keyboard-toggle">
+                                    <button class="keyboard-btn active" onclick="toggleKeyboard('barcode', 'numeric')">🔢 Numerica</button>
+                                    <button class="keyboard-btn" onclick="toggleKeyboard('barcode', 'text')">🔤 Completa</button>
+                                </div>
+                                <button class="btn btn-secondary btn-full" style="margin-top: 10px;" onclick="document.getElementById('barcode-file').click()">📷 Scanner</button>
+                                <input type="file" id="barcode-file" accept="image/*" capture="environment" onchange="scanBarcode(event)">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">3. Nome Prodotto *</label>
+                                <div style="position: relative;">
+                                    <input type="text" class="form-input" id="nomeProdotto" oninput="checkAutoComplete('nome')">
+                                    <div id="nome-suggestions" class="suggestions-dropdown hidden"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">4. Descrizione</label>
+                                <textarea class="form-textarea" id="description"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">5. Quantità *</label>
+                                <input type="number" class="form-input" id="quantity" value="1" style="font-size: 18px;">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">6. Prezzo (€) *</label>
+                                <input type="number" step="0.01" class="form-input" id="price" style="font-size: 18px;">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">7. Anno</label>
+                                <input type="number" class="form-input" id="anno" placeholder="2024">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">8. Fornitore</label>
+                                <input type="text" class="form-input" id="fornitore">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">9. Foto</label>
+                                <button class="btn btn-secondary btn-full" onclick="document.getElementById('photo-file').click()">📷 Aggiungi Foto</button>
+                                <button id="remove-photo-btn" class="btn btn-danger btn-full hidden" onclick="removePhoto()" style="margin-top: 10px;">🗑️ Rimuovi Foto</button>
+                                <input type="file" id="photo-file" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+                                <img id="photo-preview" class="photo-preview hidden">
+                            </div>
+
+                            <button class="btn btn-success btn-full" onclick="saveItem()">✓ Salva Articolo</button>
+                            <button class="btn btn-secondary btn-full" onclick="resetForm()">↺ Reset</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessions = [];
+        let currentSession = null;
+        let inventory = [];
+        let editingId = null;
+        let photoData = null;
+        const APP_URL = window.location.origin + window.location.pathname;
+
+        // Initialize
+        loadSessions();
+
+        function loadSessions() {
+            const data = localStorage.getItem('inventory-sessions');
+            if (data) sessions = JSON.parse(data);
+        }
+
+        function saveSessions() {
+            localStorage.setItem('inventory-sessions', JSON.stringify(sessions));
+        }
+
+        function loadInventory(sessionId) {
+            const data = localStorage.getItem('inventory-' + sessionId);
+            if (data) inventory = JSON.parse(data);
+            else inventory = [];
+        }
+
+        function saveInventory() {
+            if (currentSession) {
+                localStorage.setItem('inventory-' + currentSession.id, JSON.stringify(inventory));
+            }
+        }
+
+        function showAlert(type, message) {
+            const container = document.getElementById('alert-container');
+            const containerSessions = document.getElementById('alert-container-sessions');
+            
+            const alertHTML = `<div class="alert alert-${type}">${message}</div>`;
+            
+            if (container) container.innerHTML = alertHTML;
+            if (containerSessions) containerSessions.innerHTML = alertHTML;
+            
+            setTimeout(() => {
+                if (container) container.innerHTML = '';
+                if (containerSessions) containerSessions.innerHTML = '';
+            }, 3000);
+        }
+
+        // Views
+        function showSessionsView() {
+            document.getElementById('sessions-view').classList.remove('hidden');
+            document.getElementById('new-session-view').classList.add('hidden');
+            document.getElementById('sessions-list-view').classList.add('hidden');
+            document.getElementById('inventory-view').classList.add('hidden');
+        }
+
+        function showNewSessionForm() {
+            document.getElementById('sessions-view').classList.add('hidden');
+            document.getElementById('new-session-view').classList.remove('hidden');
+            document.getElementById('new-session-name').focus();
+        }
+
+        function showSessionsList() {
+            document.getElementById('sessions-view').classList.add('hidden');
+            document.getElementById('sessions-list-view').classList.remove('hidden');
+            renderSessionsList();
+        }
+
+        function renderSessionsList() {
+            const list = document.getElementById('sessions-list');
+            if (sessions.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 40px;">Nessuna sessione esistente</p>';
+                return;
+            }
+            list.innerHTML = sessions.map(s => `
+                <li class="session-item" style="padding: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px;">
+                        <div style="flex: 1; cursor: pointer;" onclick="openSession('${s.id}')">
+                            <div class="session-item-name">📂 ${s.nome}</div>
+                            <div class="session-item-info">Creata: ${new Date(s.dataCreazione).toLocaleDateString('it-IT')} | Prodotti: ${s.prodottiCount || 0}</div>
+                        </div>
+                        <button class="btn btn-danger" onclick="handleDeleteSession('${s.id}'); return false;" style="padding: 8px 15px; font-size: 14px;">
+                            🗑️ Elimina
+                        </button>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function handleDeleteSession(sessionId) {
+            deleteSession(sessionId);
+            return false;
+        }
+
+        function createSession() {
+            const name = document.getElementById('new-session-name').value.trim();
+            if (!name) {
+                alert('Inserisci un nome per la sessione!');
+                return;
+            }
+
+            // Check if session name already exists
+            const existingSession = sessions.find(s => s.nome.toLowerCase() === name.toLowerCase());
+            if (existingSession) {
+                alert(`⚠️ Esiste già una sessione con nome "${existingSession.nome}"!\n\nScegli un nome diverso.`);
+                return;
+            }
+
+            const session = {
+                id: 'sess_' + Date.now(),
+                nome: name,
+                dataCreazione: new Date().toISOString(),
+                prodottiCount: 0
+            };
+
+            sessions.push(session);
+            saveSessions();
+            openSession(session.id);
+        }
+
+        function deleteSession(sessionId) {
+            const session = sessions.find(s => s.id === sessionId);
+            if (!session) return;
+
+            if (currentSession && currentSession.id === sessionId) {
+                alert('Non puoi eliminare la sessione corrente! Chiudila prima.');
+                return;
+            }
+
+            if (confirm(`Sei sicuro di voler eliminare la sessione "${session.nome}"?\n\nQuesta azione eliminerà anche tutti i prodotti (${session.prodottiCount || 0}) associati e non può essere annullata.`)) {
+                // Remove session from array
+                sessions = sessions.filter(s => s.id !== sessionId);
+                saveSessions();
+
+                // Remove inventory data
+                localStorage.removeItem('inventory-' + sessionId);
+
+                // Re-render list
+                renderSessionsList();
+                showAlert('success', 'Sessione eliminata');
+            }
+        }
+
+        function openSession(sessionId) {
+            currentSession = sessions.find(s => s.id === sessionId);
+            loadInventory(sessionId);
+            
+            document.getElementById('sessions-view').classList.add('hidden');
+            document.getElementById('sessions-list-view').classList.add('hidden');
+            document.getElementById('inventory-view').classList.remove('hidden');
+            
+            document.getElementById('current-session-badge').textContent = currentSession.nome;
+            renderList();
+            updateStats();
+        }
+
+        function closeSession() {
+            currentSession = null;
+            inventory = [];
+            showSessionsView();
+        }
+
+        function manualSave() {
+            saveInventory();
+            const session = sessions.find(s => s.id === currentSession.id);
+            session.prodottiCount = inventory.length;
+            saveSessions();
+            showAlert('success', '💾 Salvataggio forzato completato!');
+        }
+
+        // Keyboard toggle
+        function toggleKeyboard(field, type) {
+            const input = field === 'codice' ? document.getElementById('codiceArticolo') : document.getElementById('barcode');
+            input.type = type === 'numeric' ? 'tel' : 'text';
+            
+            const buttons = input.parentElement.nextElementSibling.children;
+            buttons[0].className = type === 'numeric' ? 'keyboard-btn active' : 'keyboard-btn';
+            buttons[1].className = type === 'text' ? 'keyboard-btn active' : 'keyboard-btn';
+        }
+
+        let crossSessionWarning = null;
+        let lastCheckedValues = { codice: '', barcode: '' };
+
+        function checkCrossSessionDuplicate(field, value) {
+            if (!value || value.length < 3) {
+                hideCrossSessionWarning();
+                return;
+            }
+
+            // Don't re-check if value hasn't changed significantly
+            const lastValue = lastCheckedValues[field];
+            if (lastValue === value) return;
+            
+            lastCheckedValues[field] = value;
+
+            // Search in other sessions (not current)
+            for (let session of sessions) {
+                if (session.id === currentSession.id) continue; // Skip current session
+
+                const data = localStorage.getItem('inventory-' + session.id);
+                if (!data) continue;
+
+                const items = JSON.parse(data);
+                const match = items.find(item => {
+                    if (field === 'codice') return item.codiceArticolo === value;
+                    if (field === 'barcode') return item.barcode === value;
+                    return false;
+                });
+
+                if (match) {
+                    crossSessionWarning = {
+                        field: field,
+                        value: value,
+                        product: match,
+                        sessionId: session.id,
+                        sessionName: session.nome
+                    };
+                    showCrossSessionWarning();
+                    return;
+                }
+            }
+
+            // No duplicate found - hide warning if it was showing
+            if (crossSessionWarning && crossSessionWarning.field === field) {
+                crossSessionWarning = null;
+                hideCrossSessionWarning();
+            }
+        }
+
+        function showCrossSessionWarning() {
+            const container = document.getElementById('cross-session-warning');
+            if (!container || !crossSessionWarning) return;
+
+            const w = crossSessionWarning;
+            container.innerHTML = `
+                <div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <div style="font-weight: 700; color: #92400e; margin-bottom: 10px; font-size: 16px;">
+                        ⚠️ ${w.field === 'codice' ? 'Codice Articolo' : 'Bar Code'} già esistente in altra sessione
+                    </div>
+                    <div style="background: white; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px;">
+                        <strong>${w.product.nomeProdotto}</strong><br/>
+                        Sessione: <strong>${w.sessionName}</strong><br/>
+                        Codice: ${w.product.codiceArticolo} | Barcode: ${w.product.barcode}<br/>
+                        Prezzo: €${w.product.price.toFixed(2)}
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px;">
+                        <button class="btn btn-success btn-full" onclick="useCrossSessionData()">
+                            📋 Usa questi dati
+                        </button>
+                        <button class="btn btn-warning btn-full" onclick="moveToOtherSession()">
+                            🔄 Sposta in "${w.sessionName}"
+                        </button>
+                        <button class="btn btn-primary btn-full" onclick="keepInCurrentSession()">
+                            ✓ Mantieni qui
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.classList.remove('hidden');
+        }
+
+        function useCrossSessionData() {
+            if (!crossSessionWarning) return;
+
+            const product = crossSessionWarning.product;
+            
+            // Fill all fields with data from the other session
+            document.getElementById('codiceArticolo').value = product.codiceArticolo;
+            document.getElementById('barcode').value = product.barcode;
+            document.getElementById('nomeProdotto').value = product.nomeProdotto;
+            document.getElementById('description').value = product.description || '';
+            document.getElementById('price').value = product.price;
+            
+            if (product.anno) document.getElementById('anno').value = product.anno;
+            if (product.fornitore) document.getElementById('fornitore').value = product.fornitore;
+            
+            // Show form fields
+            document.getElementById('form-fields').classList.remove('hidden');
+            
+            // Keep warning visible so user knows it's from another session
+            // But they can now modify the data as needed
+            showAlert('info', '📋 Dati copiati! Puoi modificarli liberamente.');
+        }
+
+        function hideCrossSessionWarning() {
+            const container = document.getElementById('cross-session-warning');
+            if (container) {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+            }
+        }
+
+        function moveToOtherSession() {
+            if (!crossSessionWarning) return;
+
+            if (confirm(`Vuoi davvero passare alla sessione "${crossSessionWarning.sessionName}"?\n\nI dati inseriti in questo form saranno persi.`)) {
+                // Save current session
+                const session = sessions.find(s => s.id === currentSession.id);
+                session.prodottiCount = inventory.length;
+                saveSessions();
+                saveInventory();
+
+                // Open other session
+                openSession(crossSessionWarning.sessionId);
+                
+                // Fill form with existing product data
+                setTimeout(() => {
+                    editItem(crossSessionWarning.product.id);
+                }, 100);
+            }
+        }
+
+        function keepInCurrentSession() {
+            hideCrossSessionWarning();
+            crossSessionWarning = null;
+        }
+
+        // Auto-complete
+        function checkAutoComplete(field) {
+            const value = document.getElementById(field === 'codice' ? 'codiceArticolo' : (field === 'barcode' ? 'barcode' : 'nomeProdotto')).value.trim();
+            
+            if (field === 'codice' && value.length >= 3) {
+                document.getElementById('form-fields').classList.remove('hidden');
+            }
+
+            if (value.length < 2) {
+                document.getElementById(field + '-suggestions').classList.add('hidden');
+                return;
+            }
+
+            const matches = inventory.filter(item => {
+                if (field === 'codice') return item.codiceArticolo.toLowerCase().includes(value.toLowerCase());
+                if (field === 'barcode') return item.barcode.toLowerCase().includes(value.toLowerCase());
+                if (field === 'nome') return item.nomeProdotto.toLowerCase().includes(value.toLowerCase());
+            }).slice(0, 10);
+
+            if (matches.length > 0) {
+                const container = document.getElementById(field + '-suggestions');
+                container.innerHTML = matches.map(item => `
+                    <div class="suggestion-item" onclick="fillFromSuggestion('${item.id}')">
+                        ${item.nomeProdotto}
+                        <span class="suggestion-badge">€${item.price}</span>
+                    </div>
+                `).join('');
+                container.classList.remove('hidden');
+            } else {
+                document.getElementById(field + '-suggestions').classList.add('hidden');
+            }
+        }
+
+        function fillFromSuggestion(itemId) {
+            const item = inventory.find(i => i.id === itemId);
+            if (!item) return;
+
+            document.getElementById('codiceArticolo').value = item.codiceArticolo;
+            document.getElementById('barcode').value = item.barcode;
+            document.getElementById('nomeProdotto').value = item.nomeProdotto;
+            document.getElementById('price').value = item.price;
+            
+            // Hide all suggestion dropdowns
+            document.getElementById('codice-suggestions').classList.add('hidden');
+            document.getElementById('barcode-suggestions').classList.add('hidden');
+            document.getElementById('nome-suggestions').classList.add('hidden');
+            document.getElementById('form-fields').classList.remove('hidden');
+            
+            // Clear any cross-session warning since user is aware
+            crossSessionWarning = null;
+            hideCrossSessionWarning();
+        }
+
+        // Barcode scan
+        async function scanCodice(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showAlert('warning', 'Analisi in corso...');
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const img = new Image();
+                    img.onload = async function() {
+                        const codeReader = new ZXing.BrowserMultiFormatReader();
+                        try {
+                            const result = await codeReader.decodeFromImageElement(img);
+                            document.getElementById('codiceArticolo').value = result.getText();
+                            checkAutoComplete('codice');
+                            checkCrossSessionDuplicate('codice', result.getText());
+                            showAlert('success', '✓ Codice rilevato');
+                        } catch (err) {
+                            showAlert('warning', '⚠️ Codice non rilevato');
+                        }
+                    };
+                    img.src = e.target.result;
+                } catch (error) {
+                    showAlert('warning', 'Errore scansione');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function scanBarcode(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showAlert('warning', 'Analisi in corso...');
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const img = new Image();
+                    img.onload = async function() {
+                        const codeReader = new ZXing.BrowserMultiFormatReader();
+                        try {
+                            const result = await codeReader.decodeFromImageElement(img);
+                            document.getElementById('barcode').value = result.getText();
+                            checkCrossSessionDuplicate('barcode', result.getText());
+                            showAlert('success', '✓ Barcode rilevato');
+                        } catch (err) {
+                            showAlert('warning', '⚠️ Barcode non rilevato');
+                        }
+                    };
+                    img.src = e.target.result;
+                } catch (error) {
+                    showAlert('warning', 'Errore scansione');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Photo with automatic compression
+        function handlePhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showAlert('info', '📷 Compressione foto in corso...');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Compress and resize image
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    // Max dimensions: 800x800
+                    const MAX_SIZE = 800;
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to JPEG with 70% quality
+                    const compressedData = canvas.toDataURL('image/jpeg', 0.7);
+                    
+                    // Check size (base64 string length / 1.37 ≈ actual bytes)
+                    const sizeKB = Math.round(compressedData.length / 1024 / 1.37);
+                    
+                    if (sizeKB > 500) {
+                        showAlert('warning', `⚠️ Foto ancora grande (${sizeKB}KB). Potrebbe causare rallentamenti.`);
+                    } else {
+                        showAlert('success', `✓ Foto compressa (${sizeKB}KB)`);
+                    }
+                    
+                    photoData = compressedData;
+                    const preview = document.getElementById('photo-preview');
+                    preview.src = photoData;
+                    preview.classList.remove('hidden');
+                    
+                    // Show remove button
+                    document.getElementById('remove-photo-btn').classList.remove('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removePhoto() {
+            photoData = null;
+            document.getElementById('photo-preview').classList.add('hidden');
+            document.getElementById('photo-preview').src = '';
+            document.getElementById('remove-photo-btn').classList.add('hidden');
+            document.getElementById('photo-file').value = ''; // Reset file input
+            showAlert('info', 'Foto rimossa');
+        }
+
+        // Save item
+        function saveItem() {
+            const codiceArticolo = document.getElementById('codiceArticolo').value.trim();
+            const barcode = document.getElementById('barcode').value.trim();
+            const nomeProdotto = document.getElementById('nomeProdotto').value.trim();
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const price = parseFloat(document.getElementById('price').value);
+
+            if (!codiceArticolo || !barcode || !nomeProdotto || !quantity || !price) {
+                if (confirm('Campi obbligatori mancanti. Salvare comunque?')) {
+                    // Continua
+                } else {
+                    return;
+                }
+            }
+
+            const item = {
+                id: editingId || 'prod_' + Date.now(),
+                sessioneId: currentSession.id,
+                sessioneNome: currentSession.nome,
+                codiceArticolo,
+                barcode,
+                nomeProdotto,
+                description: document.getElementById('description').value.trim(),
+                quantity: quantity || 0,
+                price: price || 0,
+                anno: document.getElementById('anno').value.trim(),
+                fornitore: document.getElementById('fornitore').value.trim(),
+                photo: photoData,
+                timestamp: editingId ? inventory.find(i => i.id === editingId).timestamp : new Date().toISOString(),
+                lastModified: new Date().toISOString()
+            };
+
+            if (editingId) {
+                const index = inventory.findIndex(i => i.id === editingId);
+                inventory[index] = item;
+                showAlert('success', 'Articolo aggiornato e salvato!');
+            } else {
+                inventory.unshift(item);
+                showAlert('success', 'Articolo aggiunto e salvato!');
+            }
+
+            // AUTO-SAVE: Save immediately after adding/updating product
+            saveInventory();
+            const session = sessions.find(s => s.id === currentSession.id);
+            session.prodottiCount = inventory.length;
+            saveSessions();
+
+            showList();
+        }
+
+        function deleteItem(id) {
+            if (confirm('Eliminare questo articolo?')) {
+                inventory = inventory.filter(i => i.id !== id);
+                
+                // AUTO-SAVE: Save immediately after deletion
+                saveInventory();
+                const session = sessions.find(s => s.id === currentSession.id);
+                session.prodottiCount = inventory.length;
+                saveSessions();
+                
+                renderList();
+                updateStats();
+                showAlert('success', 'Articolo eliminato e salvato');
+            }
+        }
+
+        function editItem(id) {
+            const item = inventory.find(i => i.id === id);
+            editingId = id;
+            
+            document.getElementById('codiceArticolo').value = item.codiceArticolo;
+            document.getElementById('barcode').value = item.barcode;
+            document.getElementById('nomeProdotto').value = item.nomeProdotto;
+            document.getElementById('description').value = item.description || '';
+            document.getElementById('quantity').value = item.quantity;
+            document.getElementById('price').value = item.price;
+            document.getElementById('anno').value = item.anno || '';
+            document.getElementById('fornitore').value = item.fornitore || '';
+            
+            photoData = item.photo;
+            if (photoData) {
+                const preview = document.getElementById('photo-preview');
+                preview.src = photoData;
+                preview.classList.remove('hidden');
+                document.getElementById('remove-photo-btn').classList.remove('hidden');
+            }
+            
+            document.getElementById('form-fields').classList.remove('hidden');
+            showAddForm();
+        }
+
+        function resetForm() {
+            document.getElementById('codiceArticolo').value = '';
+            document.getElementById('barcode').value = '';
+            document.getElementById('nomeProdotto').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('quantity').value = '1';
+            document.getElementById('price').value = '';
+            document.getElementById('anno').value = '';
+            document.getElementById('fornitore').value = '';
+            document.getElementById('photo-preview').classList.add('hidden');
+            document.getElementById('remove-photo-btn').classList.add('hidden');
+            document.getElementById('form-fields').classList.add('hidden');
+            document.getElementById('photo-file').value = '';
+            photoData = null;
+            editingId = null;
+            crossSessionWarning = null;
+            lastCheckedValues = { codice: '', barcode: '' };
+            hideCrossSessionWarning();
+        }
+
+        function showList() {
+            document.getElementById('list-view').classList.remove('hidden');
+            document.getElementById('form-view').classList.add('hidden');
+            resetForm();
+            renderList();
+            updateStats();
+        }
+
+        function showAddForm() {
+            document.getElementById('list-view').classList.add('hidden');
+            document.getElementById('form-view').classList.remove('hidden');
+            document.getElementById('codiceArticolo').focus();
+        }
+
+        function renderList() {
+            const container = document.getElementById('items-container');
+            const search = document.getElementById('search-input').value.toLowerCase();
+            
+            const filtered = inventory.filter(item => 
+                item.codiceArticolo.toLowerCase().includes(search) ||
+                item.barcode.toLowerCase().includes(search) ||
+                item.nomeProdotto.toLowerCase().includes(search) ||
+                (item.description && item.description.toLowerCase().includes(search))
+            );
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #9ca3af; padding: 40px;">Nessun articolo</p>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(item => `
+                <div class="item">
+                    <div class="item-session">📂 ${item.sessioneNome}</div>
+                    <div class="item-code">${item.codiceArticolo} | ${item.barcode}</div>
+                    <div class="item-name">${item.nomeProdotto}</div>
+                    ${item.description ? `<div style="font-size: 13px; color: #6b7280;">${item.description}</div>` : ''}
+                    <div class="item-meta">
+                        📊 ${item.quantity} pz | 💰 €${item.price.toFixed(2)} | 💵 €${(item.quantity * item.price).toFixed(2)}
+                    </div>
+                    ${item.anno || item.fornitore ? `<div style="font-size: 12px; color: #9ca3af;">${item.anno ? 'Anno: ' + item.anno : ''} ${item.anno && item.fornitore ? '|' : ''} ${item.fornitore ? 'Fornitore: ' + item.fornitore : ''}</div>` : ''}
+                    <div style="margin-top: 10px; display: flex; gap: 5px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" style="font-size: 13px; padding: 6px 12px;" onclick="editItem('${item.id}')">✏️ Modifica</button>
+                        ${item.photo ? `<button class="btn btn-success" style="font-size: 13px; padding: 6px 12px;" onclick="downloadItemPDF('${item.id}')">📥 PDF Foto</button>` : ''}
+                        <button class="btn btn-danger" style="font-size: 13px; padding: 6px 12px;" onclick="deleteItem('${item.id}')">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterItems() {
+            renderList();
+        }
+
+        function updateStats() {
+            document.getElementById('stat-items').textContent = inventory.length;
+            document.getElementById('stat-units').textContent = inventory.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('stat-value').textContent = '€' + inventory.reduce((sum, item) => sum + (item.quantity * item.price), 0).toFixed(2);
+        }
+
+        function exportExcel() {
+            const data = inventory.map(item => ({
+                'Sessione': item.sessioneNome,
+                'Codice Articolo': item.codiceArticolo,
+                'Bar Code': item.barcode,
+                'Nome Prodotto': item.nomeProdotto,
+                'Descrizione': item.description || '',
+                'Quantità': item.quantity,
+                'Prezzo': item.price,
+                'Valore': item.quantity * item.price,
+                'Anno': item.anno || '',
+                'Fornitore': item.fornitore || '',
+                'Ha Foto': item.photo ? 'Sì' : 'No'
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+            XLSX.writeFile(wb, `inventario_${currentSession.nome.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showAlert('success', 'Excel scaricato!');
+        }
+
+        // Product view
+        function showProductView(productId) {
+            // Search in all sessions
+            let product = null;
+            for (let session of sessions) {
+                const data = localStorage.getItem('inventory-' + session.id);
+                if (data) {
+                    const items = JSON.parse(data);
+                    product = items.find(i => i.id === productId);
+                    if (product) break;
+                }
+            }
+
+            if (!product) {
+                alert('Prodotto non trovato');
+                return;
+            }
+
+            document.getElementById('sessions-view').classList.add('hidden');
+            document.getElementById('inventory-view').classList.add('hidden');
+            document.getElementById('product-view').classList.remove('hidden');
+
+            const card = document.getElementById('product-card');
+            card.innerHTML = `
+                ${product.photo ? `<img src="${product.photo}" class="product-photo" alt="${product.nomeProdotto}">` : '<div style="text-align: center; padding: 40px; color: #9ca3af;">📦 Nessuna foto</div>'}
+                <div class="product-title">${product.nomeProdotto}</div>
+                <div class="product-detail"><strong>Codice Articolo:</strong> ${product.codiceArticolo}</div>
+                <div class="product-detail"><strong>Bar Code:</strong> ${product.barcode}</div>
+                ${product.description ? `<div class="product-detail"><strong>Descrizione:</strong> ${product.description}</div>` : ''}
+                <div class="product-detail"><strong>Quantità:</strong> ${product.quantity} pz</div>
+                <div class="product-detail"><strong>Prezzo:</strong> €${product.price.toFixed(2)}</div>
+                ${product.anno ? `<div class="product-detail"><strong>Anno:</strong> ${product.anno}</div>` : ''}
+                ${product.fornitore ? `<div class="product-detail"><strong>Fornitore:</strong> ${product.fornitore}</div>` : ''}
+                <div class="product-detail"><strong>Sessione:</strong> ${product.sessioneNome}</div>
+                ${product.photo ? `<button class="btn btn-success btn-full" style="margin-top: 20px;" onclick="downloadProductPDF('${productId}')">📥 Download PDF Foto</button>` : '<div class="alert alert-warning" style="margin-top: 20px;">⚠️ Nessuna foto disponibile per il download</div>'}
+            `;
+        }
+
+        function downloadProductPDF(productId) {
+            // Search product
+            let product = null;
+            for (let session of sessions) {
+                const data = localStorage.getItem('inventory-' + session.id);
+                if (data) {
+                    const items = JSON.parse(data);
+                    product = items.find(i => i.id === productId);
+                    if (product) break;
+                }
+            }
+
+            if (!product || !product.photo) {
+                alert('Foto non disponibile');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            
+            // Add product name - larger and bold
+            pdf.setFontSize(20);
+            pdf.setFont(undefined, 'bold');
+            pdf.text(product.nomeProdotto, 105, 15, { align: 'center' });
+            
+            // Add barcode below name
+            pdf.setFontSize(12);
+            pdf.setFont(undefined, 'normal');
+            pdf.text('Codice: ' + product.codiceArticolo + ' | Barcode: ' + product.barcode, 105, 23, { align: 'center' });
+            
+            // Add photo
+            const img = new Image();
+            img.onload = function() {
+                const imgWidth = 180;
+                const imgHeight = (img.height * imgWidth) / img.width;
+                pdf.addImage(product.photo, 'JPEG', 15, 30, imgWidth, imgHeight);
+                pdf.save(`${product.nomeProdotto.replace(/\s+/g, '_')}_foto.pdf`);
+            };
+            img.src = product.photo;
+        }
+
+        function downloadItemPDF(itemId) {
+            const item = inventory.find(i => i.id === itemId);
+            
+            if (!item || !item.photo) {
+                alert('Foto non disponibile');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            
+            // Add product name - larger and bold
+            pdf.setFontSize(20);
+            pdf.setFont(undefined, 'bold');
+            pdf.text(item.nomeProdotto, 105, 15, { align: 'center' });
+            
+            // Add barcode below name
+            pdf.setFontSize(12);
+            pdf.setFont(undefined, 'normal');
+            pdf.text('Codice: ' + item.codiceArticolo + ' | Barcode: ' + item.barcode, 105, 23, { align: 'center' });
+            
+            // Add photo
+            const img = new Image();
+            img.onload = function() {
+                const imgWidth = 180;
+                const imgHeight = (img.height * imgWidth) / img.width;
+                pdf.addImage(item.photo, 'JPEG', 15, 30, imgWidth, imgHeight);
+                pdf.save(`${item.nomeProdotto.replace(/\s+/g, '_')}_foto.pdf`);
+            };
+            img.src = item.photo;
+        }
+    </script>
+</body>
+</html>
